@@ -339,6 +339,15 @@
     '.doc h3.addonTitle { text-align: center; margin: 44pt 0 26pt; font-size: 12pt; }',
     '.doc .bullet { margin: 0 0 5pt; padding-left: 18pt; text-indent: -18pt; }',
     '.doc .thanks { margin-top: 100pt; text-align: center; font-weight: bold; }',
+    // These print rules live here, after the screen rules above, so they win by both
+    // order and specificity. The page itself supplies the margins, so the printed
+    // sheets must carry no padding and no fixed A4 height, or every page would spill
+    // onto a second sheet.
+    '@media print {',
+    '  #docOverlay .doc { background: #fff; padding: 0; }',
+    '  #docOverlay .doc .page { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }',
+    '  #docOverlay .doc .page + .page { break-before: page; }',
+    '}',
   ].join('\n');
 
   const api = {

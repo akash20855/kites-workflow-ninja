@@ -131,21 +131,23 @@
   .syncrow { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
   textarea { font: inherit; resize: vertical; }
 
-  /* Quote and invoice document */
-  #docOverlay { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.55); overflow: auto; }
-  #docOverlay .bar { position: sticky; top: 0; z-index: 2; display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+  /* The quote document opens as its own dark section under the app header, never as a
+     full screen cover, so the header and every app button stay reachable while a
+     document is on screen. */
+  #docOverlay { background: #2b2b2e; padding-bottom: 20px; }
+  #docOverlay .bar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
     background: var(--ink); color: #fff; padding: 10px var(--pad); }
   #docOverlay .bar button { background: #2c2c2e; color: #fff; border-color: #48484a; }
+  #docOverlay .bar button.primary { background: var(--blue); border-color: var(--blue); }
   #docOverlay .bar label { display: flex; align-items: center; gap: 6px; color: #aeaeb2; font-size: 13px; }
   #docOverlay .bar select { width: auto; margin: 0; }
+  #docOverlay .doc { padding-top: 16px; }
+  #docOverlay .foot { display: flex; gap: 6px; justify-content: center; padding: 16px var(--pad) 0; }
   @page { size: A4; margin: 18mm 25mm; }
   @media print {
     body > * { display: none !important; }
-    body > #docOverlay { display: block !important; position: static; background: #fff; overflow: visible; }
-    #docOverlay .bar { display: none !important; }
-    .doc { background: #fff; padding: 0; }
-    .doc .page { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
-    .doc .page + .page { break-before: page; }
+    body > #docOverlay { display: block !important; background: #fff; padding: 0; }
+    #docOverlay .bar, #docOverlay .foot { display: none !important; }
   }
 </style>
 </head>
@@ -255,13 +257,17 @@
 
 <div id="docOverlay" hidden>
   <div class="bar">
-    <button id="docPrint" class="primary">Print or save as PDF</button>
+    <button id="docClose" class="primary">&larr; Back to the app</button>
+    <button id="docPrint">Print or save as PDF</button>
     <label>Document <select id="docKind"><option value="quote">Quote</option><option value="invoice">Invoice</option></select></label>
     <button id="docCopy">Copy as text</button>
-    <button id="docClose">Close</button>
     <span class="muted" style="color:#aeaeb2">In the print dialog choose Save as PDF to send it as a file.</span>
   </div>
   <div id="docBody"></div>
+  <div class="foot">
+    <button id="docCloseBottom">&larr; Back to the app</button>
+    <button id="docPrintBottom">Print or save as PDF</button>
+  </div>
 </div>
 
 <script src="workflow.js"></script>
@@ -594,15 +600,14 @@
     $('#docBody').innerHTML = '<style>' + INV.DOC_CSS + '</style>' +
       INV.docHtml(doc, state.settings, { client: docClient(r), quoteFor: r.name, logoHref: LOGO_HREF });
     $('#docOverlay').hidden = false;
-    if (!keepOpen) document.body.style.overflow = 'hidden';
-    if (!keepOpen) $('#docOverlay').scrollTop = 0;
+    if (!keepOpen) $('#docOverlay').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function closeDoc() {
     $('#docOverlay').hidden = true;
-    document.body.style.overflow = '';
     save();
     renderAll();
+    $('#detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   async function copyDocText() {
@@ -848,8 +853,10 @@
   });
 
   $('#docPrint').addEventListener('click', () => window.print());
+  $('#docPrintBottom').addEventListener('click', () => window.print());
   $('#docCopy').addEventListener('click', () => copyDocText());
   $('#docClose').addEventListener('click', () => closeDoc());
+  $('#docCloseBottom').addEventListener('click', () => closeDoc());
   $('#docKind').addEventListener('change', (ev) => {
     const r = record(docRecordId);
     if (!r) return;
