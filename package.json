@@ -1,0 +1,45 @@
+{
+  "name": "kites-workflow-ninja",
+  "version": "1.0.0",
+  "description": "Offline workflow app for Kites and Threads: leads, jobs, workflow tasks, quotes, invoices, payments and an automated email log.",
+  "private": true,
+  "license": "UNLICENSED",
+  "author": "Kites and Threads",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test workflow.test.js invoice.test.js sync-server.test.js",
+    "build": "node build.js",
+    "icons": "node tools/make-icons.js",
+    "sync": "node sync-server.js",
+    "dist:mac": "electron-builder --mac --dir",
+    "dist:dmg": "electron-builder --mac"
+  },
+  "build": {
+    "appId": "com.kitesandthreads.workflow",
+    "productName": "Kites Workflow Ninja",
+    "files": [
+      "main.js",
+      "index.html",
+      "workflow.js",
+      "invoice.js",
+      "pwa.js",
+      "sw.js",
+      "manifest.webmanifest",
+      "logo-white.png",
+      "logo-black.png",
+      "icons/"
+    ],
+    "mac": {
+      "category": "public.app-category.business",
+      "icon": "build/icon.icns",
+      "target": [
+        "dmg"
+      ]
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.8.0",
+    "electron-builder": "^26.15.3"
+  }
+}

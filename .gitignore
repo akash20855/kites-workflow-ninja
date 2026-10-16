@@ -1,0 +1,12 @@
+node_modules/
+dist/
+
+# Local sync server data: this is a device copy, keep it out of the repo.
+sync-data.json
+sync-data.json.tmp
+
+# Built single file (regenerate with: node build.js)
+kites-and-threads-workflow.standalone.html
+
+.DS_Store
+*.log

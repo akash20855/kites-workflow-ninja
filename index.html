@@ -1,0 +1,872 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Kites and Threads · Workflow</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1d1d1f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kites Workflow">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<style>
+  :root {
+    --ink: #1d1d1f; --muted: #6e6e73; --line: #e5e5ea; --bg: #f5f5f7;
+    --card: #fff; --blue: #0a84ff; --red: #d70015; --green: #1a7f37;
+    --pad: 12px; --radius: 12px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; font: 15px/1.45 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    background: var(--bg); color: var(--ink);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  h2 { font-size: 15px; margin: 0 0 10px; }
+  h3 { font-size: 12px; margin: 16px 0 6px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  a { color: var(--blue); }
+  p { margin: 6px 0; }
+
+  header {
+    background: var(--ink); color: #fff; padding: calc(10px + env(safe-area-inset-top)) var(--pad) 10px;
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 20;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .logo { width: 170px; height: 24px; overflow: hidden; position: relative; flex: none; }
+  .logo img { position: absolute; width: 243px; left: -37px; top: -102px; max-width: none; }
+  .tagline { color: #aeaeb2; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  header .actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  header button { background: #2c2c2e; color: #fff; border-color: #48484a; }
+  header button:hover { background: #3a3a3c; }
+  #netState { font-size: 12px; color: #ffd60a; }
+  #netState:empty { display: none; }
+  body.offline header { box-shadow: inset 0 -2px 0 #ffd60a; }
+
+  main { padding: var(--pad); max-width: 1240px; margin: 0 auto; }
+  .cols { display: block; }
+  @media (max-width: 899px) {
+    /* On a phone the header must stay small, and 16px inputs stop mobile Safari
+       from zooming the page when a field is focused. */
+    .tagline { display: none; }
+    header { padding: calc(8px + env(safe-area-inset-top)) var(--pad) 8px; gap: 8px; }
+    header button, input, select, textarea { font-size: 16px; }
+    header button { padding: 5px 8px; }
+  }
+  @media (min-width: 900px) {
+    .cols { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 14px; align-items: start; }
+    .logo { width: 200px; height: 26px; }
+    .logo img { width: 286px; left: -43px; top: -120px; }
+  }
+
+  section, details.panel {
+    background: var(--card); border-radius: var(--radius); padding: var(--pad);
+    box-shadow: 0 1px 2px rgba(0,0,0,.06); margin-bottom: 12px;
+  }
+  details.panel > summary { cursor: pointer; font-weight: 600; list-style: none; }
+  details.panel > summary::-webkit-details-marker { display: none; }
+  details.panel > summary::after { content: ' ▾'; color: var(--muted); }
+  details.panel[open] > summary::after { content: ' ▴'; }
+  details.panel[open] > summary { margin-bottom: 10px; }
+
+  input, select, button, textarea {
+    font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid #c7c7cc; background: #fff; color: inherit;
+  }
+  input, select, textarea { width: 100%; margin: 3px 0 10px; }
+  input[type="checkbox"] { width: auto; margin: 0; flex: none; }
+  button { cursor: pointer; background: #f2f2f7; width: auto; margin: 0; }
+  button.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+  button.danger { color: var(--red); }
+  button.ghost { background: transparent; border-color: transparent; color: var(--muted); }
+  label { display: block; font-size: 13px; color: var(--muted); }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .row > * { margin: 0; }
+  .grow { flex: 1; min-width: 120px; }
+
+  .statgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+  .stat { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  .stat b { display: block; font-size: 19px; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 8px; cursor: pointer; }
+  .card:hover { border-color: #b9b9be; }
+  .card.active { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(10,132,255,.15); }
+  .card .top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .card .who { font-weight: 600; }
+
+  .pill { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 99px; background: #e5e5ea; white-space: nowrap; }
+  .stage-LEAD_CREATED { background: #e5e5ea; }
+  .stage-JOB_ACCEPTED { background: #d1f0d6; }
+  .stage-MAIN_SHOOT { background: #ffe9b3; }
+  .stage-JOB_COMPLETE { background: #c9d9ff; }
+  .pill.late { background: #ffd6d9; color: #8a0010; }
+
+  .muted { color: var(--muted); font-size: 12px; }
+  .bar { height: 5px; border-radius: 99px; background: #e5e5ea; overflow: hidden; margin-top: 8px; }
+  .bar > i { display: block; height: 100%; background: var(--blue); }
+
+  .task { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid #f0f0f3; font-size: 14px; }
+  .task:last-child { border-bottom: 0; }
+  .task.overdue { color: var(--red); }
+  .task .t { flex: 1; min-width: 0; }
+
+  .stages { display: flex; gap: 4px; margin-bottom: 10px; }
+  .stages div { flex: 1; text-align: center; padding: 6px 2px; font-size: 11px; border-radius: 8px; background: #f0f0f3; color: var(--muted); }
+  .stages div.on { background: var(--blue); color: #fff; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  td, th { text-align: left; padding: 5px 4px; border-bottom: 1px solid #f0f0f3; }
+  th { color: var(--muted); font-weight: 500; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  ul.todo { list-style: none; margin: 0; padding: 0; }
+  ul.todo li { display: flex; gap: 8px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid #f0f0f3; cursor: pointer; font-size: 14px; }
+  ul.todo li:last-child { border-bottom: 0; }
+  ul.todo li:hover { background: #fafafa; }
+  ul.todo .when { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
+  ul.todo .when.late { color: var(--red); }
+  .empty { color: var(--muted); font-size: 13px; margin: 4px 0; }
+  .syncrow { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
+  textarea { font: inherit; resize: vertical; }
+
+  /* Quote and invoice document */
+  #docOverlay { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.55); overflow: auto; }
+  #docOverlay .bar { position: sticky; top: 0; z-index: 2; display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+    background: var(--ink); color: #fff; padding: 10px var(--pad); }
+  #docOverlay .bar button { background: #2c2c2e; color: #fff; border-color: #48484a; }
+  #docOverlay .bar label { display: flex; align-items: center; gap: 6px; color: #aeaeb2; font-size: 13px; }
+  #docOverlay .bar select { width: auto; margin: 0; }
+  @page { size: A4; margin: 18mm 25mm; }
+  @media print {
+    body > * { display: none !important; }
+    body > #docOverlay { display: block !important; position: static; background: #fff; overflow: visible; }
+    #docOverlay .bar { display: none !important; }
+    .doc { background: #fff; padding: 0; }
+    .doc .page { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
+    .doc .page + .page { break-before: page; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <span class="logo"><img src="logo-white.png" alt="Kites and Threads" width="286"></span>
+    <span class="tagline">Wedding films &amp; portraits</span>
+  </div>
+  <div class="actions">
+    <span id="netState"></span>
+    <button id="installBtn" hidden>Install app</button>
+    <button id="runAuto">Run automations</button>
+    <button id="syncToggle">Sync</button>
+    <button id="studioBtn">Studio</button>
+    <button id="exportBtn">Export</button>
+    <button id="importBtn">Import</button>
+    <input type="file" id="importFile" accept="application/json" hidden>
+  </div>
+</header>
+
+<main>
+  <section id="overview">
+    <div class="row" style="justify-content:space-between">
+      <h2>Overview</h2>
+      <span class="muted" id="today"></span>
+    </div>
+    <div class="statgrid" id="stats"></div>
+    <div class="cols">
+      <div>
+        <h3>Needs attention</h3>
+        <ul class="todo" id="overdueList"></ul>
+        <h3>Next 7 days</h3>
+        <ul class="todo" id="soonList"></ul>
+      </div>
+      <div>
+        <h3>Upcoming shoots</h3>
+        <ul class="todo" id="shootList"></ul>
+        <h3>Money</h3>
+        <div class="statgrid" id="moneyStats"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="syncPanel" hidden>
+    <h2>Sync between devices</h2>
+    <p class="muted">Run <code>node sync-server.js</code> on one computer and enter its address here on each device. Pull replaces this device's data; push overwrites the server copy.</p>
+    <div class="row">
+      <input id="syncUrl" class="grow" placeholder="http://192.168.1.20:8787" autocomplete="off" inputmode="url">
+      <button id="pullBtn">Pull</button>
+      <button id="pushBtn">Push</button>
+    </div>
+  </section>
+
+  <section id="settingsPanel" hidden>
+    <h2>Studio details and standard wording</h2>
+    <p class="muted">These fill every new quote and invoice. A document already saved on a job keeps its own copy, so editing this never changes a document you have sent.</p>
+    <form id="settingsForm">
+      <label>Studio name<input name="name" autocomplete="off"></label>
+      <label>Address<input name="address" autocomplete="off"></label>
+      <label>Phone no<input name="phone" autocomplete="off"></label>
+      <label>Email<input name="email" autocomplete="off"></label>
+      <label>Covering letter (one paragraph per line)<textarea name="letter" rows="4"></textarea></label>
+      <label>Crew details (one per line)<textarea name="crew" rows="3"></textarea></label>
+      <label>Photo output (start a line with - for a note under the item)<textarea name="photo" rows="4"></textarea></label>
+      <label>Film output<textarea name="film" rows="4"></textarea></label>
+      <label>Add-ons<textarea name="addOns" rows="5"></textarea></label>
+      <button class="primary" type="submit">Save studio details</button>
+    </form>
+  </section>
+
+  <div class="cols">
+    <div>
+      <details class="panel" id="newLeadPanel">
+        <summary>New lead</summary>
+        <form id="leadForm">
+          <label>Lead / job name<input name="name" required autocomplete="off"></label>
+          <label>Client name<input name="clientName" autocomplete="off"></label>
+          <label>Client email<input name="clientEmail" type="email" autocomplete="off"></label>
+          <label>Client phone<input name="clientPhone" autocomplete="off" inputmode="tel"></label>
+          <label>Main shoot date<input name="shootDate" type="datetime-local"></label>
+          <label>Job type<select name="jobTypeId" id="jobTypeSelect"></select></label>
+          <label>Notes<input name="notes" autocomplete="off"></label>
+          <button class="primary" type="submit">Add lead</button>
+        </form>
+      </details>
+
+      <section>
+        <div class="row" style="justify-content:space-between;margin-bottom:8px">
+          <h2 style="margin:0">Jobs</h2>
+          <select id="currency" style="width:auto" title="Currency">
+            <option value="₹">₹ INR</option>
+            <option value="$">$ USD</option>
+            <option value="£">£ GBP</option>
+            <option value="€">€ EUR</option>
+            <option value="AED ">AED</option>
+          </select>
+        </div>
+        <input id="searchBox" placeholder="Search a couple, client, place or note" autocomplete="off">
+        <div id="list"></div>
+      </section>
+    </div>
+
+    <section id="detail"><p class="empty">Select a job to see its workflow, quotes and payments.</p></section>
+  </div>
+</main>
+
+<div id="docOverlay" hidden>
+  <div class="bar">
+    <button id="docPrint" class="primary">Print or save as PDF</button>
+    <label>Document <select id="docKind"><option value="quote">Quote</option><option value="invoice">Invoice</option></select></label>
+    <button id="docCopy">Copy as text</button>
+    <button id="docClose">Close</button>
+    <span class="muted" style="color:#aeaeb2">In the print dialog choose Save as PDF to send it as a file.</span>
+  </div>
+  <div id="docBody"></div>
+</div>
+
+<script src="workflow.js"></script>
+<script src="invoice.js"></script>
+<script src="pwa.js"></script>
+<script>
+(function () {
+  'use strict';
+  const W = window.KitesThreadsWorkflow;
+  const INV = window.KitesInvoice;
+  // The black lockup used on documents. build.js swaps this line for a data URI so the
+  // single file build carries its own logo.
+  const LOGO_HREF = 'logo-black.png';
+  const KEY = 'kites-and-threads-workflow:v1';
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const fmt = (iso) => (iso ? new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—');
+  const fmtDay = (iso) => (iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
+  const money = (n) => W.formatMoney(n, state.currency);
+  const p2 = (n) => String(n).padStart(2, '0');
+  const toLocalInput = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()) + 'T' + p2(d.getHours()) + ':' + p2(d.getMinutes());
+  };
+  const plural = (n, one, many) => n + ' ' + (n === 1 ? one : (many || one + 's'));
+
+  // ------------------------------------------------------------ state
+
+  function defaultState() {
+    const wedding = W.makeJobType('Wedding Film & Photos', '#e11d48', [
+      W.makeTemplateTask('Send questionnaire (couple story, timeline, families)', 'email', 'LEAD_CREATED', 2, { autoSend: true, emailTemplate: 'questionnaire' }),
+      W.makeTemplateTask('Send contract & advance invoice', 'email', 'JOB_ACCEPTED', 1, { autoSend: false, emailTemplate: 'contract' }),
+      W.makeTemplateTask('Book second shooter / drone / videographer', 'extra_shoot', 'JOB_ACCEPTED', 0),
+      W.makeTemplateTask('Send pre-wedding checklist to couple', 'email', 'MAIN_SHOOT', -7, { autoSend: true, emailTemplate: 'reminder' }),
+      W.makeTemplateTask('Edit & deliver film teaser + highlights', 'todo', 'MAIN_SHOOT', 30),
+      W.makeTemplateTask('Deliver full album', 'todo', 'MAIN_SHOOT', 45),
+    ]);
+    const preWedding = W.makeJobType('Pre-Wedding / Couple Shoot', '#f59e0b', [
+      W.makeTemplateTask('Send questionnaire & mood board request', 'email', 'LEAD_CREATED', 0, { autoSend: true, emailTemplate: 'questionnaire' }),
+      W.makeTemplateTask('Send location & outfit guide', 'email', 'MAIN_SHOOT', -5, { autoSend: true, emailTemplate: 'reminder' }),
+      W.makeTemplateTask('Edit & deliver photos', 'todo', 'MAIN_SHOOT', 10),
+    ]);
+    const portrait = W.makeJobType('Portrait Session', '#0a84ff', [
+      W.makeTemplateTask('Send questionnaire', 'email', 'LEAD_CREATED', 0, { autoSend: true, emailTemplate: 'questionnaire' }),
+      W.makeTemplateTask('Edit photos', 'todo', 'MAIN_SHOOT', 7),
+    ]);
+    const event = W.makeJobType('Event / Other Shoot', '#8e8e93', [
+      W.makeTemplateTask('Confirm brief with client', 'todo', 'LEAD_CREATED', 1),
+      W.makeTemplateTask('Edit & deliver photos', 'todo', 'MAIN_SHOOT', 14),
+    ]);
+    return {
+      jobTypes: [wedding, preWedding, portrait, event], records: [], selectedId: null,
+      currency: '\u20b9', search: '', settings: INV.defaultSettings(),
+    };
+  }
+
+  let state;
+  function load() {
+    try { state = JSON.parse(localStorage.getItem(KEY)) || defaultState(); }
+    catch (e) { state = defaultState(); }
+    if (!state || !Array.isArray(state.jobTypes) || !Array.isArray(state.records)) state = defaultState();
+    if (!state.currency) state.currency = '\u20b9';
+    if (typeof state.search !== 'string') state.search = '';
+    // Studio settings survive upgrades: any key added by a newer version is filled in.
+    const defaults = INV.defaultSettings();
+    const saved = state.settings || {};
+    state.settings = Object.assign(defaults, saved);
+    state.settings.studio = Object.assign(defaults.studio, saved.studio || {});
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { alert('This device could not save: ' + e.message); } }
+
+  const jobType = (id) => state.jobTypes.find((j) => j.id === id);
+  const record = (id) => state.records.find((r) => r.id === id);
+
+  // ------------------------------------------------------------ overview
+
+  function renderStats() {
+    const now = new Date();
+    const d = W.dashboard(state.records, now);
+    $('#today').textContent = now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+    $('#stats').innerHTML = [
+      ['Open leads', d.counts.LEAD_CREATED],
+      ['Jobs accepted', d.counts.JOB_ACCEPTED],
+      ['Shoots in progress', d.counts.MAIN_SHOOT],
+      ['Completed', d.counts.JOB_COMPLETE],
+      ['Tasks open', d.openTasks],
+    ].map(([label, value]) => '<div class="stat"><b>' + value + '</b><span>' + esc(label) + '</span></div>').join('');
+
+    $('#moneyStats').innerHTML = [
+      ['Accepted value', money(d.money.accepted)],
+      ['Invoiced', money(d.money.invoiced)],
+      ['Collected', money(d.money.collected)],
+      ['Outstanding', money(d.money.outstanding)],
+    ].map(([label, value]) => '<div class="stat"><b>' + esc(value) + '</b><span>' + esc(label) + '</span></div>').join('');
+
+    $('#overdueList').innerHTML = d.overdue.length ? d.overdue.slice(0, 12).map((o) =>
+      '<li data-id="' + esc(o.id) + '"><span>' + esc(o.name) + ' — ' + esc(o.taskTitle) + '</span>' +
+      '<span class="when late">' + (o.daysLate === 0 ? 'due earlier today' : plural(o.daysLate, 'day') + ' late') + '</span></li>').join('')
+      : '<li class="empty" style="cursor:default">Nothing is late. Good.</li>';
+
+    $('#soonList').innerHTML = d.dueSoon.length ? d.dueSoon.slice(0, 12).map((o) =>
+      '<li data-id="' + esc(o.id) + '"><span>' + esc(o.name) + ' — ' + esc(o.taskTitle) + '</span>' +
+      '<span class="when">' + (o.daysAway === 0 ? 'today' : 'in ' + plural(o.daysAway, 'day')) + '</span></li>').join('')
+      : '<li class="empty" style="cursor:default">No task is due in the next 7 days.</li>';
+
+    $('#shootList').innerHTML = d.upcomingShoots.length ? d.upcomingShoots.slice(0, 12).map((s) =>
+      '<li data-id="' + esc(s.id) + '"><span>' + esc(s.name) + '</span>' +
+      '<span class="when">' + esc(fmtDay(s.shootDate)) + ' · ' + (s.daysAway === 0 ? 'today' : 'in ' + plural(s.daysAway, 'day')) + '</span></li>').join('')
+      : '<li class="empty" style="cursor:default">No upcoming shoot yet. Add a lead with a shoot date.</li>';
+  }
+
+  // ------------------------------------------------------------ list
+
+  function renderJobTypeSelect() {
+    $('#jobTypeSelect').innerHTML = state.jobTypes
+      .map((j) => '<option value="' + esc(j.id) + '">' + esc(j.name) + '</option>').join('');
+  }
+
+  function renderList() {
+    const now = new Date();
+    const found = W.searchRecords(state.records, state.search, state.jobTypes);
+    const ordered = found.slice().reverse();
+    if (!ordered.length) {
+      $('#list').innerHTML = '<p class="empty">' +
+        (state.records.length ? 'No job matches that search.' : 'No leads yet. Add your first lead above.') + '</p>';
+      return;
+    }
+    $('#list').innerHTML = ordered.map((r) => {
+      const jt = jobType(r.jobTypeId);
+      const od = W.overdueTasks(r, now).length;
+      const prog = W.taskProgress(r);
+      const next = W.nextTask(r);
+      const value = W.jobValue(r);
+      return '<div class="card' + (r.id === state.selectedId ? ' active' : '') + '" data-id="' + esc(r.id) + '">' +
+        '<div class="top"><span class="who">' + esc(r.name) + '</span>' +
+        (value ? '<span class="muted num">' + esc(money(value)) + '</span>' : '') + '</div>' +
+        '<div class="muted">' + esc(jt ? jt.name : 'No job type') + (r.shootDate ? ' · ' + esc(fmtDay(r.shootDate)) : ' · no shoot date yet') + '</div>' +
+        '<div class="row" style="margin-top:6px">' +
+        '<span class="pill stage-' + esc(r.stage) + '">' + esc(W.stageLabel(r.stage)) + '</span>' +
+        (od ? '<span class="pill late">' + plural(od, 'task') + ' late</span>' : '') +
+        '</div>' +
+        (next ? '<div class="muted" style="margin-top:6px">Next: ' + esc(next.title) + '</div>' : '<div class="muted" style="margin-top:6px">All tasks done</div>') +
+        (prog.total ? '<div class="bar"><i style="width:' + prog.percent + '%"></i></div>' : '') +
+        '</div>';
+    }).join('');
+  }
+
+  // ------------------------------------------------------------ detail
+
+  function renderDetail() {
+    const r = record(state.selectedId);
+    if (!r) { $('#detail').innerHTML = '<p class="empty">Select a job to see its workflow, quotes and payments.</p>'; return; }
+    const now = new Date();
+    const stages = W.MILESTONES.map((m) => {
+      const on = W.MILESTONES.indexOf(m) <= W.MILESTONES.indexOf(r.stage);
+      return '<div class="' + (on ? 'on' : '') + '">' + esc(W.stageLabel(m)) + '</div>';
+    }).join('');
+
+    const progress = W.taskProgress(r);
+    const tasks = r.tasks.map((t) => {
+      const late = !t.done && t.dueDate && new Date(t.dueDate) < now;
+      const mode = t.type === 'email' && t.autoSend ? 'auto' : 'manual';
+      const timing = t.dueDate ? 'due ' + esc(fmt(t.dueDate))
+        : t.anchor ? 'waiting for ' + esc(W.stageLabel(t.anchor)) : '';
+      return '<label class="task' + (late ? ' overdue' : '') + '">' +
+        '<input type="checkbox" data-task="' + esc(t.id) + '"' + (t.done ? ' checked' : '') + '>' +
+        '<span class="t">' + esc(t.title) + ' <span class="muted">[' + esc(t.type) + ', ' + mode + ']</span></span>' +
+        '<span class="muted">' + timing + '</span></label>';
+    }).join('') || '<p class="empty">This job has no job type, so it has no workflow tasks. Pick a job type in Edit details.</p>';
+
+    const quotes = r.quotes.map((q) => '<div class="card" style="cursor:default">' +
+      '<div class="row" style="justify-content:space-between">' +
+      '<strong>' + esc(q.kind === 'fixed' ? 'Fixed quote' : 'Pick &amp; choose quote') + '</strong>' +
+      '<span>' + esc(money(W.quoteTotal(q))) + '</span></div>' +
+      '<div class="muted">' + q.lines.map((l) => esc(l.label) + ' ' + esc(money(l.price))).join(' · ') +
+      (q.depositPercent ? ' · ' + q.depositPercent + '% deposit' : '') + '</div>' +
+      '<div class="row" style="margin-top:6px"><span class="pill">' + esc(q.status) + '</span>' +
+      (q.status !== 'accepted' ? '<button data-accept="' + esc(q.id) + '" class="primary">Client accepted</button>' : '') +
+      '</div></div>').join('') || '<p class="empty">No quote yet.</p>';
+
+    const invoices = r.invoices.length
+      ? '<table><tr><th>Invoice</th><th class="num">Amount</th></tr>' +
+        r.invoices.map((i) => '<tr><td>' + esc(i.label) + '</td><td class="num">' + esc(money(i.amount)) + '</td></tr>').join('') +
+        '<tr><td><b>Balance due</b></td><td class="num"><b>' + esc(money(W.balanceDue(r))) + '</b></td></tr></table>' +
+        '<p class="muted">Invoiced ' + esc(money(W.invoiceTotal(r))) + ' · collected ' + esc(money(W.amountPaid(r))) + '</p>'
+      : '<p class="empty">No invoices. Accept a quote to raise the deposit and balance.</p>';
+
+    const doc = ensureDoc(r);
+    const docPanel =
+      '<form id="docForm">' +
+      '<label>Place on the document<input name="docLocation" value="' + esc(doc.location) + '" autocomplete="off"></label>' +
+      '<label>Client phone<input name="docPhone" value="' + esc(r.client.phone || '') + '" autocomplete="off" inputmode="tel"></label>' +
+      '<label>Issue date<input name="docIssue" value="' + esc(INV.formatDate(doc.issueDate)) + '" placeholder="12th Oct 2026" autocomplete="off"></label>' +
+      '<label>Events, one per line, name : date<textarea name="docEvents" rows="3">' +
+        esc(doc.events.map((e) => e.name + ' : ' + INV.formatDate(e.date)).join('\n')) + '</textarea></label>' +
+      '<label>Charge in rupees<input name="docCharge" type="number" min="0" step="1" value="' + esc(String(doc.charge)) + '"></label>' +
+      '<label>Covering letter, one paragraph per line<textarea name="docLetter" rows="4">' + esc(INV.listToLines(doc.letter)) + '</textarea></label>' +
+      '<label>Crew details<textarea name="docCrew" rows="3">' + esc(INV.listToLines(doc.crew)) + '</textarea></label>' +
+      '<label>Photo output<textarea name="docPhoto" rows="4">' + esc(INV.listToLines(doc.photo)) + '</textarea></label>' +
+      '<label>Film output<textarea name="docFilm" rows="4">' + esc(INV.listToLines(doc.film)) + '</textarea></label>' +
+      '<label>Add-ons<textarea name="docAddOns" rows="5">' + esc(INV.listToLines(doc.addOns)) + '</textarea></label>' +
+      '<div class="row">' +
+      '<button class="primary" type="submit">Save document</button>' +
+      '<button type="button" data-doc="preview">Preview &amp; print</button>' +
+      '<button type="button" data-doc="text">Copy as text</button>' +
+      '</div></form>';
+
+    const emails = r.emailLog.length
+      ? r.emailLog.slice().reverse().map((e) => '<div class="task"><span class="t">' + esc(e.subject) + '</span>' +
+        '<span class="muted">to ' + esc(e.to || 'no client email') + ' · ' + esc(fmt(e.at)) + '</span></div>').join('')
+      : '<p class="empty">Nothing logged yet. Automations write here; connect a mail service to actually send.</p>';
+
+    const typeOptions = state.jobTypes
+      .map((j) => '<option value="' + esc(j.id) + '"' + (j.id === r.jobTypeId ? ' selected' : '') + '>' + esc(j.name) + '</option>').join('');
+
+    $('#detail').innerHTML =
+      '<div class="row" style="justify-content:space-between">' +
+      '<h2 style="margin:0">' + esc(r.name) + '</h2>' +
+      '<div class="row"><button class="danger" data-delete>Delete</button></div></div>' +
+      '<p class="muted">' + esc(r.client.name || 'No client name') + (r.client.email ? ' · ' + esc(r.client.email) : '') + '</p>' +
+      (r.notes ? '<p>' + esc(r.notes) + '</p>' : '') +
+      '<div class="stages">' + stages + '</div>' +
+      '<div class="row">' +
+      (r.stage === 'LEAD_CREATED' ? '<button data-milestone="JOB_ACCEPTED">Mark job accepted</button>' : '') +
+      (W.MILESTONES.indexOf(r.stage) < W.MILESTONES.indexOf('MAIN_SHOOT') ? '<button data-milestone="MAIN_SHOOT">Mark main shoot done</button>' : '') +
+      (r.stage !== 'JOB_COMPLETE' ? '<button data-milestone="JOB_COMPLETE">Mark job complete</button>'
+        : '<button data-milestone="JOB_COMPLETE" disabled>Job complete</button>') +
+      '<span class="muted">' + progress.done + '/' + progress.total + ' tasks done</span>' +
+      '</div>' +
+
+      '<details class="panel" style="box-shadow:none;border:1px solid var(--line);margin-top:12px">' +
+      '<summary>Edit details</summary>' +
+      '<form id="editForm">' +
+      '<label>Lead / job name<input name="name" value="' + esc(r.name) + '" required autocomplete="off"></label>' +
+      '<label>Client name<input name="clientName" value="' + esc(r.client.name) + '" autocomplete="off"></label>' +
+      '<label>Client email<input name="clientEmail" type="email" value="' + esc(r.client.email) + '" autocomplete="off"></label>' +
+      '<label>Client phone<input name="clientPhone" value="' + esc(r.client.phone || '') + '" autocomplete="off"></label>' +
+      '<label>Main shoot date<input name="shootDate" type="datetime-local" value="' + esc(toLocalInput(r.shootDate)) + '"></label>' +
+      '<label>Job type<select name="jobTypeId">' + (r.jobTypeId ? '' : '<option value="">No job type</option>') + typeOptions + '</select></label>' +
+      '<label>Notes<input name="notes" value="' + esc(r.notes) + '" autocomplete="off"></label>' +
+      '<p class="muted">Changing the job type rebuilds the workflow and keeps any task you already ticked off. Moving the shoot date moves the open tasks with it.</p>' +
+      '<button class="primary" type="submit">Save changes</button>' +
+      '</form></details>' +
+
+      '<h3>Workflow</h3>' + tasks +
+      '<h3>Quotes</h3>' +
+      '<form id="quoteForm" class="row">' +
+      '<select name="kind" style="width:auto"><option value="fixed">Fixed</option><option value="pick_choose">Pick &amp; choose</option></select>' +
+      '<input name="label" placeholder="Package" style="width:150px" autocomplete="off">' +
+      '<input name="price" type="number" min="0" step="1" placeholder="Price" style="width:110px">' +
+      '<input name="deposit" type="number" min="0" max="100" placeholder="Deposit %" style="width:110px">' +
+      '<button type="submit">Add quote</button></form>' + quotes +
+      '<h3>Invoices &amp; payments</h3>' + invoices +
+      '<form id="payForm" class="row">' +
+      '<input name="amount" type="number" min="0.01" step="0.01" placeholder="Payment amount" style="width:170px">' +
+      '<button type="submit">Record payment</button></form>' +
+      '<h3>Quote / invoice</h3>' + docPanel +
+      '<h3>Automated email log</h3>' + emails;
+  }
+
+  function renderAll() {
+    renderJobTypeSelect();
+    renderStats();
+    renderList();
+    renderDetail();
+    const el = $('#searchBox');
+    if (el && el.value !== state.search) el.value = state.search;
+    const cur = $('#currency');
+    if (cur && cur.value !== state.currency) cur.value = state.currency;
+  }
+
+  function act(fn) {
+    try { fn(); save(); renderAll(); }
+    catch (e) { alert(e.message); }
+  }
+
+  // ------------------------------------------------------------ quote and invoice
+
+  // Every job gets its own copy of the document the first time it is opened, filled in
+  // with the studio's standard wording, so editing the standards later cannot change a
+  // document that has already gone to a client.
+  function ensureDoc(r) {
+    if (!r.doc) r.doc = INV.defaultDoc(r, state.settings);
+    else r.doc = INV.normaliseDoc(r.doc, state.settings);
+    return r.doc;
+  }
+
+  // Accepts 12th Oct 2026, 12 Oct 2026, 12/10/2026 or 2026-10-12.
+  function parseDateInput(value) {
+    const text = String(value === undefined || value === null ? '' : value).trim();
+    if (!text) return '';
+    const words = /^(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3,})[ ,\-]*(\d{4})$/.exec(text);
+    if (words) {
+      const month = INV.MONTHS.findIndex((m) => m.toLowerCase() === words[2].slice(0, 3).toLowerCase());
+      if (month >= 0) return new Date(Number(words[3]), month, Number(words[1])).toISOString();
+    }
+    const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(text);
+    if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3])).toISOString();
+    const dmy = /^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/.exec(text);
+    if (dmy) return new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1])).toISOString();
+    const parsed = new Date(text);
+    return isNaN(parsed.getTime()) ? '' : parsed.toISOString();
+  }
+
+  const docClient = (r) => ({ name: r.client.name || r.name, email: r.client.email || '', phone: r.client.phone || '' });
+
+  function renderSettings() {
+    const form = $('#settingsForm');
+    if (!form) return;
+    const s = state.settings;
+    const studio = s.studio || {};
+    form.querySelector('[name="name"]').value = studio.name || '';
+    form.querySelector('[name="address"]').value = studio.address || '';
+    form.querySelector('[name="phone"]').value = studio.phone || '';
+    form.querySelector('[name="email"]').value = studio.email || '';
+    form.querySelector('[name="letter"]').value = INV.listToLines(s.letter);
+    form.querySelector('[name="crew"]').value = INV.listToLines(s.crew);
+    form.querySelector('[name="photo"]').value = INV.listToLines(s.photo);
+    form.querySelector('[name="film"]').value = INV.listToLines(s.film);
+    form.querySelector('[name="addOns"]').value = INV.listToLines(s.addOns);
+  }
+
+  let docRecordId = null;
+
+  function openDoc(r, keepOpen) {
+    const doc = ensureDoc(r);
+    docRecordId = r.id;
+    $('#docKind').value = doc.kind;
+    $('#docBody').innerHTML = '<style>' + INV.DOC_CSS + '</style>' +
+      INV.docHtml(doc, state.settings, { client: docClient(r), quoteFor: r.name, logoHref: LOGO_HREF });
+    $('#docOverlay').hidden = false;
+    if (!keepOpen) document.body.style.overflow = 'hidden';
+    if (!keepOpen) $('#docOverlay').scrollTop = 0;
+  }
+
+  function closeDoc() {
+    $('#docOverlay').hidden = true;
+    document.body.style.overflow = '';
+    save();
+    renderAll();
+  }
+
+  async function copyDocText() {
+    const r = record(docRecordId || state.selectedId);
+    if (!r) return;
+    const text = INV.docText(ensureDoc(r), state.settings, { client: docClient(r), quoteFor: r.name });
+    try {
+      await navigator.clipboard.writeText(text);
+      alert('The document was copied as plain text.');
+    } catch (e) {
+      window.prompt('Copy the text below:', text);
+    }
+  }
+
+  function select(id) {
+    state.selectedId = id;
+    save();
+    renderAll();
+    if (window.matchMedia('(max-width: 899px)').matches) {
+      const d = $('#detail');
+      if (d) d.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  // ------------------------------------------------------------ events
+
+  $('#leadForm').addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const f = new FormData(ev.target);
+    act(() => {
+      const r = W.createRecord({
+        name: f.get('name'), clientName: f.get('clientName'), clientEmail: f.get('clientEmail'),
+        clientPhone: f.get('clientPhone'), shootDate: f.get('shootDate') || null, notes: f.get('notes'),
+      }, jobType(f.get('jobTypeId')));
+      W.applyClock(r);
+      state.records.push(r);
+      state.selectedId = r.id;
+      ev.target.reset();
+      renderJobTypeSelect();
+    });
+  });
+
+  $('#list').addEventListener('click', (ev) => {
+    const card = ev.target.closest('[data-id]');
+    if (card) select(card.dataset.id);
+  });
+
+  $('#overview').addEventListener('click', (ev) => {
+    const li = ev.target.closest('li[data-id]');
+    if (li) select(li.dataset.id);
+  });
+
+  $('#searchBox').addEventListener('input', (ev) => {
+    state.search = ev.target.value;
+    save();
+    renderList();
+  });
+
+  $('#currency').addEventListener('change', (ev) => {
+    state.currency = ev.target.value;
+    save();
+    renderAll();
+  });
+
+  $('#detail').addEventListener('click', (ev) => {
+    const r = record(state.selectedId);
+    if (!r) return;
+    const t = ev.target;
+    if (t.matches('[data-delete]')) {
+      if (!confirm('Delete ' + r.name + '? This cannot be undone.')) return;
+      act(() => { state.records = state.records.filter((x) => x.id !== r.id); state.selectedId = null; });
+    } else if (t.dataset.milestone) {
+      act(() => W.markMilestoneManual(r, t.dataset.milestone));
+    } else if (t.dataset.accept) {
+      act(() => W.acceptQuote(r, t.dataset.accept));
+    } else if (t.dataset.doc === 'preview') {
+      openDoc(r);
+    } else if (t.dataset.doc === 'text') {
+      docRecordId = r.id;
+      copyDocText();
+    }
+  });
+
+  $('#detail').addEventListener('change', (ev) => {
+    const r = record(state.selectedId);
+    if (!r || !ev.target.dataset.task) return;
+    act(() => {
+      const task = r.tasks.find((x) => x.id === ev.target.dataset.task);
+      if (task) task.done = ev.target.checked;
+    });
+  });
+
+  $('#detail').addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const r = record(state.selectedId);
+    if (!r) return;
+    const f = new FormData(ev.target);
+    if (ev.target.id === 'editForm') {
+      act(() => {
+        const before = r.jobTypeId || null;
+        const picked = f.get('jobTypeId') || null;
+        W.updateRecordDetails(r, {
+          name: f.get('name'), notes: f.get('notes'), clientName: f.get('clientName'),
+          clientEmail: f.get('clientEmail'), clientPhone: f.get('clientPhone'),
+          shootDate: f.get('shootDate') || null,
+        });
+        // Only rebuild the workflow when the job type actually changed, so ticking
+        // tasks off and saving the details never resets progress.
+        if (before !== picked) W.setJobType(r, jobType(picked) || null);
+      });
+    } else if (ev.target.id === 'quoteForm') {
+      act(() => {
+        W.makeQuote(r, f.get('kind'), [{ label: f.get('label') || 'Package', price: f.get('price') || 0 }],
+          { depositPercent: f.get('deposit') || 0 });
+      });
+    } else if (ev.target.id === 'payForm') {
+      act(() => W.recordPayment(r, f.get('amount')));
+    } else if (ev.target.id === 'docForm') {
+      act(() => {
+        const d = ensureDoc(r);
+        d.location = String(f.get('docLocation') || '');
+        d.issueDate = parseDateInput(f.get('docIssue')) || d.issueDate;
+        d.charge = Number(f.get('docCharge')) || 0;
+        d.events = INV.linesToList(f.get('docEvents')).map((line) => {
+          const cut = line.indexOf(':');
+          const name = (cut === -1 ? line : line.slice(0, cut)).trim();
+          return { name, date: cut === -1 ? '' : parseDateInput(line.slice(cut + 1)) };
+        });
+        d.letter = INV.linesToList(f.get('docLetter'));
+        d.crew = INV.linesToList(f.get('docCrew'));
+        d.photo = INV.linesToList(f.get('docPhoto'));
+        d.film = INV.linesToList(f.get('docFilm'));
+        d.addOns = INV.linesToList(f.get('docAddOns'));
+        W.updateRecordDetails(r, { clientPhone: f.get('docPhone') });
+      });
+      alert('Document saved for this job.');
+    }
+  });
+
+  $('#runAuto').addEventListener('click', () => {
+    act(() => {
+      state.records.forEach((r) => W.applyClock(r));
+      const n = W.runAllAutomations(state.records);
+      alert(n ? plural(n, 'email') + ' due, logged in the workflow.' : 'No automated email was due.');
+    });
+  });
+
+  $('#exportBtn').addEventListener('click', () => {
+    const blob = new Blob([W.exportData({ jobTypes: state.jobTypes, records: state.records })], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'kites-workflow-ninja-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  $('#importBtn').addEventListener('click', () => $('#importFile').click());
+  $('#importFile').addEventListener('change', (ev) => {
+    const file = ev.target.files[0];
+    if (!file) return;
+    file.text().then((txt) => {
+      if (!confirm('Replace everything on this device with the backup?')) return;
+      const data = W.importData(txt);
+      state.jobTypes = data.jobTypes;
+      state.records = data.records;
+      state.selectedId = null;
+      save();
+      renderAll();
+      alert('Imported ' + plural(data.records.length, 'job') + '.');
+    }).catch((e) => alert('Import failed: ' + e.message));
+    ev.target.value = '';
+  });
+
+  // LAN or hosted sync: push and pull the whole workspace.
+  const SYNC_KEY = 'ktWorkflowSyncUrl';
+  $('#syncToggle').addEventListener('click', () => {
+    const panel = $('#syncPanel');
+    panel.hidden = !panel.hidden;
+    if (!panel.hidden) $('#syncUrl').focus();
+  });
+  $('#syncUrl').value = localStorage.getItem(SYNC_KEY) || (location.protocol.indexOf('http') === 0 ? location.origin : '');
+  $('#syncUrl').addEventListener('change', (e) => localStorage.setItem(SYNC_KEY, e.target.value.trim()));
+  const syncBase = () => {
+    const u = $('#syncUrl').value.trim().replace(/\/+$/, '');
+    if (!u) throw new Error('Enter the sync server address first.');
+    return u;
+  };
+  const applyBackup = (data) => {
+    state.jobTypes = data.jobTypes;
+    state.records = data.records;
+    state.selectedId = null;
+    save();
+    renderAll();
+  };
+  async function pushSync() {
+    const base = syncBase();
+    if (!confirm('Overwrite the server copy with this device\'s data?')) return;
+    const body = W.exportData({ jobTypes: state.jobTypes, records: state.records });
+    const r = await fetch(base + '/api/state', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body });
+    if (!r.ok) throw new Error(await r.text());
+    alert('Pushed ' + plural(state.records.length, 'job') + ' to the server.');
+  }
+  async function pullSync() {
+    const base = syncBase();
+    if (!confirm('Replace this device\'s data with the server copy?')) return;
+    const r = await fetch(base + '/api/state', { cache: 'no-store' });
+    if (r.status === 404) throw new Error('The server has no data yet. Push from a device first.');
+    if (!r.ok) throw new Error(await r.text());
+    applyBackup(W.importData(await r.text()));
+    alert('Pulled from the server.');
+  }
+  $('#pushBtn').addEventListener('click', () => pushSync().catch((e) => alert('Push failed: ' + e.message)));
+  $('#pullBtn').addEventListener('click', () => pullSync().catch((e) => alert('Pull failed: ' + e.message)));
+
+  // ------------------------------------------------------------ start
+
+  $('#studioBtn').addEventListener('click', () => {
+    const panel = $('#settingsPanel');
+    panel.hidden = !panel.hidden;
+    if (!panel.hidden) {
+      renderSettings();
+      panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+
+  $('#settingsForm').addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const f = new FormData(ev.target);
+    act(() => {
+      const s = state.settings;
+      s.studio = {
+        name: String(f.get('name') || ''), address: String(f.get('address') || ''),
+        phone: String(f.get('phone') || ''), email: String(f.get('email') || ''),
+      };
+      s.letter = INV.linesToList(f.get('letter'));
+      s.crew = INV.linesToList(f.get('crew'));
+      s.photo = INV.linesToList(f.get('photo'));
+      s.film = INV.linesToList(f.get('film'));
+      s.addOns = INV.linesToList(f.get('addOns'));
+    });
+    renderSettings();
+    alert('Studio details saved. New quotes and invoices will use them.');
+  });
+
+  $('#docPrint').addEventListener('click', () => window.print());
+  $('#docCopy').addEventListener('click', () => copyDocText());
+  $('#docClose').addEventListener('click', () => closeDoc());
+  $('#docKind').addEventListener('change', (ev) => {
+    const r = record(docRecordId);
+    if (!r) return;
+    ensureDoc(r).kind = ev.target.value === 'invoice' ? 'invoice' : 'quote';
+    save();
+    openDoc(r, true);
+  });
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape' && !$('#docOverlay').hidden) closeDoc();
+  });
+
+  load();
+  const panel = $('#newLeadPanel');
+  if (panel && window.matchMedia('(min-width: 900px)').matches) panel.open = true;
+  renderSettings();
+  renderAll();
+})();
+</script>
+</body>
+</html>
